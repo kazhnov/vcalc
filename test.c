@@ -2,6 +2,14 @@
 #include "vcalc.h"
 #include <assert.h>
 
+f64 f(f64 x) {
+    return x*x;
+}
+
+f64 F(f64 x) {
+    return (x*x*x)/3.;
+}
+
 void parsing() {
     printf("Parsing... ");
     fflush(stdout);
@@ -17,13 +25,15 @@ void derivation() {
     printf("Derivation... ");
     fflush(stdout);
     Matrix* poly = PolyFromVa64(5, 1., 2., 3., 4., 5., 6.);
-    PolyDifferentiate(poly);
+    Matrix* der = PolyDerivative(poly);
     Matrix* check = PolyFromVa64(4, 5., 8., 9., 8., 5.);
-    assert(!PolyEq(check, poly));
+    assert(!PolyEq(check, der));
     free(poly);
+    free(der);
     free(check);
     printf("OK\n");
 }
+
 
 void integration() {
     printf("Integration... ");
@@ -31,7 +41,7 @@ void integration() {
     {
 	Matrix* poly = PolyFromVa64(5, 1., 0., 3., 4., 5., 6.);
 	Matrix* antider = PolyAntiderivative(poly);
-	Matrix* check = PolyFromVa64(6, 1./6., 0., 3./4., 4./3., 5./2., 6., 2);
+	Matrix* check = PolyFromVa64(6, 1./6., 0., 3./4., 4./3., 5./2., 6., 0.);
 	
 	assert(!PolyEq(antider, check));
 
@@ -44,6 +54,12 @@ void integration() {
 	assert(PolyIntegrate(poly, 2, 6) == -3668./15.);
 	free(poly);
     }
+    {
+	f64 exact = F(3) - F(0);
+	f64 approximate = FunctionIntegrateTrapezoid(f, 0, 3, 0.01);
+	assert(fabs(exact - approximate) < 0.001);
+
+    }
     
     printf("OK\n");
 }
@@ -51,9 +67,31 @@ void integration() {
 void evaluation() {
     printf("Evaluation... ");
     fflush(stdout);
-    Matrix* poly = PolyParse("x^5 + 2x^4 + 3x^3 + 4x^2 + 5x + 6");
-    assert(PolyEvaluate(poly, 2) == 120);
-    free(poly);
+
+    {
+	Matrix* poly = PolyParse("x^5 + 2x^4 + 3x^3 + 4x^2 + 5x + 6");
+	assert(PolyEvaluate(poly, 2) == 120);
+	free(poly);
+    }
+
+    {
+	Matrix* results = FunctionEvaluateRange(f, 0, 4, 0.5);
+	Matrix* results_check = MatrixFromVa64(2, 9,
+					       0.0,   0.0,
+					       0.5,  0.25,
+					       1.0,   1.0,
+					       1.5,  2.25,
+					       2.0,   4.0,
+					       2.5,  6.25,
+					       3.0,   9.0,
+					       3.5, 12.25,
+					       4.0,  16.0
+	    );
+	assert(!MatrixEq(results_check, results));
+	free(results);
+	free(results_check);
+    }
+    
     printf("OK\n");
 }
 
@@ -95,6 +133,42 @@ void matrix_multiplication() {
     printf("OK\n");
 }
 
+void concatenation() {
+    printf("Matrix Concatenation... ");
+    fflush(stdout);
+    Matrix* a = MatrixFromVa64(3, 3,
+			       5.5, 1.1, 2.3,
+			       5.6, 8.7, 0.3,
+			       6.1, 7.6, 1.0);
+    Matrix* b = MatrixFromVa64(2, 2,
+			       2.2, 2.3,
+			       5.6, 7.4);
+    Matrix* abr = MatrixRowsCat(a, b);
+    Matrix* abr_check = MatrixFromVa64(3, 5,
+	5.5000,	1.1000,	2.3000,	
+	5.6000,	8.7000,	0.3000,	
+	6.1000,	7.6000,	1.0000,	
+	2.2000,	2.3000,	0.0000,	
+	5.6000,	7.4000,	0.0000
+	);
+    assert(!MatrixEq(abr, abr_check));
+
+    Matrix* abc = MatrixColumnsCat(a, b);
+    Matrix* abc_check = MatrixFromVa64(5, 3,
+				       5.5000,	1.1000,	2.3000,	2.2000,	2.3000,	
+				       5.6000,	8.7000,	0.3000,	5.6000,	7.4000,	
+				       6.1000,	7.6000,	1.0000,	0.0000,	0.0000);
+    assert(!MatrixEq(abc, abc_check));
+    
+    free(a);
+    free(b);
+    free(abr);
+    free(abc);
+    free(abr_check);
+    free(abc_check);
+    printf("OK\n");
+}
+
 int main() {
     parsing();
     evaluation();
@@ -102,5 +176,6 @@ int main() {
     integration();
     poly_multiplication();
     matrix_multiplication();
+    concatenation();
     return 0;
 }
