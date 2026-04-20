@@ -22,6 +22,14 @@ Matrix* iVCALC_MatrixNew(u32 x, u32 y) {
     return matrix;
 }
 
+VCALC_Matrix* VCALC_MatrixFromArray(u32 x, u32 y, f64 array[x*y]) {
+    Matrix* matrix = MatrixZeros(x, y);
+    for (u32 i = 0; i < x*y; i++) {
+	matrix->values[i] = array[i];
+    }
+    return matrix;
+}
+
 VCALC_Matrix* VCALC_MatrixZeros(u32 x, u32 y) {
     return iVCALC_MatrixNew(x, y);
 }
@@ -37,8 +45,14 @@ VCALC_Matrix* VCALC_MatrixOnes(u32 x, u32 y) {
     return matrix;
 }
 
+VCALC_Matrix* VCALC_MatrixDup(VCALC_Matrix* from) {
+    Matrix* dup = MatrixZeros(from->size[0], from->size[1]);
+    assert(!MatrixCopy(dup, from));
+    return dup;
+}
+
 void VCALC_MatrixMove(Matrix* to, Matrix* from) {
-    MatrixCopy(to, from);
+    if (MatrixCopy(to, from)) return;
     free(from);
 }
 
@@ -70,12 +84,50 @@ Matrix* VCALC_MatrixFromVa64(u32 x, u32 y, ...) {
     return matrix;
 }
 
+
+VCALC_Matrix* VCALC_VectorZeros(u32 size) {
+    return MatrixZeros(size, 1);
+}
+
 Matrix* VCALC_VectorFromVa64(u32 size, ...) {
     va_list values;
     va_start(values, size);
     Matrix* vector =  iVCALC_MatrixFromVaList(size, 1, values);
     va_end(values);
     return vector;
+}
+
+VCALC_Matrix* VCALC_VectorFromArray(u32 size, f64 array[size]) {
+    Matrix* vector = MatrixZeros(size, 1);
+    for (u32 i = 0; i < size; i++) {
+	vector->values[i] = array[i];
+    }
+    return vector;
+}
+
+f64 VCALC_VectorGet(VCALC_Matrix* vector, u32 x) {
+    if (vector->size[0] <= x) return 0;
+    return vector->values[x];
+}
+
+void VCALC_VectorSet(VCALC_Matrix* vector, u32 x, f64 value) {
+    if (vector->size[0] <= x) return;
+    vector->values[x] = value;
+}
+
+
+VCALC_Matrix* VCALC_ScalarNew(f64 value) {
+    Matrix* scalar = MatrixZeros(1, 1);
+    scalar->values[0] = value;
+    return scalar;
+}
+
+f64 VCALC_ScalarGet(Matrix* scalar) {
+    return scalar->values[0];
+}
+
+void VCALC_ScalarSet(Matrix* scalar, f64 value) {
+    scalar->values[0] = value;
 }
 
 Matrix* VCALC_PolyFromVa64(u32 degree, ...) {
@@ -109,13 +161,16 @@ b8 VCALC_MatrixEq(VCALC_Matrix* a, VCALC_Matrix* b) {
     return 0;
 }
 
-void VCALC_MatrixCopy(Matrix* to, Matrix* from) {
-    if (to->size[0] < from->size[0] || to->size[1] < from->size[1]) return;
+b8 VCALC_MatrixCopy(Matrix* to, Matrix* from) {
+    if (to->size[0] < from->size[0] || to->size[1] < from->size[1]) return 1;
+    to->size[0] = from->size[0];
+    to->size[1] = from->size[1];
     for (u32 j = 0; j < from->size[1]; j++) {
 	for (u32 i = 0; i < from->size[0]; i++) {
 	    MatrixSet(to, i, j, MatrixGet(from, i, j));
 	}
     }
+    return 0;
 }
 
 Matrix* VCALC_MatrixTransposed(Matrix* matrix) {
@@ -156,16 +211,16 @@ Matrix* iVCALC_PolyNew(u32 degree) {
     return MatrixZeros(degree+1, 1);
 }
 
-Matrix* VCALC_PolyFromVector64(u32 degree, f64 vector[degree + 1]) {
+Matrix* VCALC_PolyFromArray(u32 degree, f64 array[degree + 1]) {
     Matrix* poly = iVCALC_PolyNew(degree);
     for (u32 i = 0; i <= degree; i++) {
-	poly->values[i] = vector[i];
+	poly->values[i] = array[i];
     }
     return poly;
 }
 
 Matrix* VCALC_PolyDup(Matrix* poly) {
-    return PolyFromVector64(poly->size[0] - 1, poly->values);
+    return PolyFromArray(poly->size[0] - 1, poly->values);
 }
 
 Matrix* VCALC_PolyDerivative(Matrix* poly) {
@@ -195,8 +250,7 @@ u32 VCALC_PolyCopy(Matrix* to, Matrix* from) {
 
 void VCALC_PolyDifferentiate(Matrix* poly) {
     Matrix* temp = PolyDerivative(poly);
-    PolyCopy(poly, temp);
-    free(temp);
+    MatrixMove(poly, temp);
 }
 
 void VCALC_PolyPrint(Matrix* poly) {
@@ -228,12 +282,12 @@ void VCALC_PolyPrint(Matrix* poly) {
 
 b8 VCALC_PolyEq(Matrix* first, Matrix* second) {
     if (first->size[0] != second->size[0]) {
-	printf("Not the same degrees\n");
-	return 1;      
+	iVCALC_LogSimple("Not the same degrees\n");
+	return 1;
     }
     for (u32 i = 0; i <= first->size[0] - 1; i++) {
 	if (!iVCALC_DoubleEq(first->values[i], second->values[i])) {
-	    printf("Not the same at power %u.\n%.30lf\n%.30lf\n", first->size[0] - 1 - i, first->values[i], second->values[i]);
+	    iVCALC_LogMessage("Not the same at power %u.\n%.30lf\n%.30lf\n", first->size[0] - 1 - i, first->values[i], second->values[i]);
 	    return 1;
 	}
     }
@@ -291,7 +345,6 @@ Matrix* VCALC_PolyParse(char* str) {
 	if (sscanf(str + cursor + 1, "%u%n", &new_degree, &read) != 1) continue;
 	if (str[cursor + 1 + read] == 0) break;
 	cursor++;
-//	printf("\nnew degree = %d\n", degree);
 	if (new_degree > degree) degree = new_degree;
 	cursor += read;
     }
@@ -299,13 +352,11 @@ Matrix* VCALC_PolyParse(char* str) {
     cursor = 0;
     for(;; cursor++) {
 	if (str[cursor] == 0) break;
-//	printf("symbol: %c\n", str[cursor]);
 	u32 read;
 	f64 value = 0;
 	b8 is_negative = 0;
 	b8 has_value = 0;
 	u32 power = 0;
-//	if(iVCALC_WhitespaceSkip(str, &cursor)) break;
 	if (str[cursor] == '+') {
 	    cursor++;
 	}
@@ -314,15 +365,12 @@ Matrix* VCALC_PolyParse(char* str) {
 	    cursor++;
 	}
 	
-//	if (iVCALC_WhitespaceSkip(str, &cursor)) break;
 	if (sscanf(str + cursor, "%lf%n", &value, &read) == 1) {
 	    cursor += read;
 	    has_value = 1;
 	    if (is_negative) value *= -1;
-//	    printf("value: %d %lf\n", is_negative, value);
 	}
 
-//	if (iVCALC_WhitespaceSkip(str, &cursor)) break;
 	if (str[cursor] == 'x') {
 	    if (!has_value) {
 		has_value = 1;
@@ -344,7 +392,6 @@ Matrix* VCALC_PolyParse(char* str) {
 	    if (!has_value) continue;
 	    cursor--;
 	}
-//	printf("%lfx^%u\n", value, power);	
 	poly->values[degree - power] += value;
 	if (str[cursor] == 0) break;
     }
@@ -359,5 +406,50 @@ Matrix* VCALC_PolyMultiply(Matrix* a, Matrix* b) {
 	    result->values[k] += a->values[i]*b->values[j];
 	}
     }
+    return result;
+}
+
+// Statistics
+
+f64 VCALC_VectorElementsSum(Matrix* vector) {
+    f64 sum = 0;
+    for (u32 i = 0; i < vector->size[0]; i++) {
+	sum += vector->values[i];
+    }
+    return sum;
+}
+
+f64 VCALC_VectorMean(Matrix* vector) {
+    return VectorElementsSum(vector)/vector->size[0];
+}
+
+void VCALC_VectorScale(Matrix* vector, f64 scale) {
+    for (u32 i = 0; i < vector->size[0]; i++) {
+	vector->values[i] *= scale;
+    }
+}
+
+Matrix* VCALC_MatrixColumnsSum(Matrix* matrix) {
+    Matrix* result = VectorZeros(matrix->size[0]);
+    for (u32 j = 0; j < matrix->size[1]; j++) {
+	f64 sum = 0;
+	for (u32 i = 0; i < matrix->size[0]; i++) {
+	    sum += MatrixGet(matrix, i, j);
+	}
+	result->values[j] = sum;
+    }
+    return result;
+}
+
+Matrix* VCALC_MatrixColumnsMean(Matrix* matrix) {
+    Matrix* vector = MatrixColumnsSum(matrix);
+    VectorScale(vector, matrix->size[1]);
+    return vector;
+}
+
+f64 VCALC_MatrixElementMean(Matrix* matrix) {
+    Matrix* vector = MatrixColumnsMean(matrix);
+    f64 result = VectorMean(vector);
+    free(vector);
     return result;
 }

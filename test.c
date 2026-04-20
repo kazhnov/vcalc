@@ -7,9 +7,6 @@ void parsing() {
     fflush(stdout);
     Matrix* poly =       PolyParse("-7.6x^6 + 8.4x^3 + 5.1x^2 - 2x^2 + 55.1x - 5. - 11.");
     Matrix* check = PolyFromVa64(6, -7.6, 0., 0., 8.4, 3.1, 55.1, -16.);
-//    printf("\n");
-//    PolyPrint(poly);
-//    PolyPrint(check);
     assert(!PolyEq(check, poly));    
     free(poly);
     free(check);
@@ -60,9 +57,8 @@ void evaluation() {
     printf("OK\n");
 }
 
-
-void multiplication() {
-    printf("Multiplication ...");
+void poly_multiplication() {
+    printf("Polynomial Multiplication ...");
     fflush(stdout);
 
     Matrix* a = PolyFromVa64(5, 3.3, 1.5, 6., 3.4, -1.2, 0.2);
@@ -73,9 +69,9 @@ void multiplication() {
     free(b);
     free(ab);
 
-
     printf("OK\n");
 }
+
 void matrix_multiplication() {
     printf("Matrix Multiplication... ");
     fflush(stdout);
@@ -91,7 +87,6 @@ void matrix_multiplication() {
 				   4., 4., 12., 6., 16.);
     assert(!MatrixEq(ab, check));
     
-    
     free(a);
     free(b);
     free(ab);
@@ -105,7 +100,7 @@ int main() {
     evaluation();
     derivation();
     integration();
-    multiplication();
+    poly_multiplication();
     matrix_multiplication();
     return 0;
 }
