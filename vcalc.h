@@ -60,6 +60,8 @@ VCALC_Matrix* VCALC_PolyFromVa64(u32 degree, ...);
 VCALC_Matrix* VCALC_PolyFromArray(u32 degree, f64 array[degree + 1]);
 VCALC_Matrix* VCALC_PolyDerivative(VCALC_Matrix* poly);
 VCALC_Matrix* VCALC_PolyAntiderivative(VCALC_Matrix* poly);
+f64 VCALC_PolyGet(VCALC_Matrix* poly, u32 degree);
+void VCALC_PolySet(VCALC_Matrix* poly, u32 degree, f64 value);
 void VCALC_PolyPrint(VCALC_Matrix* poly);
 u32 VCALC_PolyCopy(VCALC_Matrix* to, VCALC_Matrix* from);
 b8 VCALC_PolyEq(VCALC_Matrix* first, VCALC_Matrix* second);
@@ -111,6 +113,8 @@ f64 VCALC_FunctionIntegrateTrapezoid(f64 f(f64), f64 from, f64 to, f64 dx);
 #define PolyEvaluate VCALC_PolyEvaluate
 #define PolyFromVa64 VCALC_PolyFromVa64
 #define PolyFromArray VCALC_PolyFromArray
+#define PolyGet VCALC_PolyGet
+#define PolySet VCALC_PolySet
 #define PolyDerivative VCALC_PolyDerivative
 #define PolyAntiderivative VCALC_PolyAntiderivative
 #define PolyPrint VCALC_PolyPrint

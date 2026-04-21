@@ -14,7 +14,7 @@ void parsing() {
     printf("Parsing... ");
     fflush(stdout);
     Matrix* poly =       PolyParse("-7.6x^6 + 8.4x^3 + 5.1x^2 - 2x^2 + 55.1x - 5. - 11.");
-    Matrix* check = PolyFromVa64(6, -7.6, 0., 0., 8.4, 3.1, 55.1, -16.);
+    Matrix* check = PolyFromVa64(6, -16., 55.1, 3.1, 8.4, 0.0, 0.0, -7.6);
     assert(!PolyEq(check, poly));    
     free(poly);
     free(check);
@@ -24,7 +24,7 @@ void parsing() {
 void derivation() {
     printf("Derivation... ");
     fflush(stdout);
-    Matrix* poly = PolyFromVa64(5, 1., 2., 3., 4., 5., 6.);
+    Matrix* poly = PolyFromVa64(5, 6., 5., 4., 3., 2., 1.);
     Matrix* der = PolyDerivative(poly);
     Matrix* check = PolyFromVa64(4, 5., 8., 9., 8., 5.);
     assert(!PolyEq(check, der));
@@ -39,9 +39,9 @@ void integration() {
     printf("Integration... ");
     fflush(stdout);
     {
-	Matrix* poly = PolyFromVa64(5, 1., 0., 3., 4., 5., 6.);
+	Matrix* poly = PolyFromVa64(5, 6., 5., 4., 3., 0., 1.);
 	Matrix* antider = PolyAntiderivative(poly);
-	Matrix* check = PolyFromVa64(6, 1./6., 0., 3./4., 4./3., 5./2., 6., 0.);
+	Matrix* check = PolyFromVa64(6, 0., 6., 5./2., 4./3., 3./4., 0.0, 1./6.);
 	
 	assert(!PolyEq(antider, check));
 
@@ -50,7 +50,7 @@ void integration() {
 	free(check);
     }
     {
-	Matrix* poly = PolyFromVa64(2, -4.3, 2.6, 3.);
+	Matrix* poly = PolyParse("-4.3x^2 + 2.6x + 3");
 	assert(PolyIntegrate(poly, 2, 6) == -3668./15.);
 	free(poly);
     }

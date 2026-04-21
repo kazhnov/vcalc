@@ -133,6 +133,16 @@ Matrix* VCALC_PolyFromVa64(u32 degree, ...) {
     return poly;
 }
 
+f64 VCALC_PolyGet(Matrix* poly, u32 power) {
+    if (poly->size[0] <= power) return 0;
+    return poly->values[power];
+}
+
+void VCALC_PolySet(Matrix* poly, u32 power, f64 value) {
+    if (poly->size[0] <= power) return;
+    poly->values[power] = value;
+}
+
 void VCALC_MatrixPrint(Matrix* matrix) {
     for (u32 j = 0; j < matrix->size[1]; j++) {
 	for (u32 i = 0; i < matrix->size[0]; i++) {
@@ -229,7 +239,7 @@ Matrix* iVCALC_PolyNew(u32 degree) {
 Matrix* VCALC_PolyFromArray(u32 degree, f64 array[degree + 1]) {
     Matrix* poly = iVCALC_PolyNew(degree);
     for (u32 i = 0; i <= degree; i++) {
-	poly->values[i] = array[i];
+	PolySet(poly, i, array[i]);
     }
     return poly;
 }
@@ -246,37 +256,41 @@ Matrix* VCALC_PolyDerivative(Matrix* poly) {
 	der = iVCALC_PolyNew(0);
     }
 
-    for (u32 i = 0; i < poly->size[0] - 1; i++) {
-	u32 power = poly->size[0] - 1 - i;
-	der->values[i] = poly->values[i]*power;
+    for (u32 i = 0; i < der->size[0]; i++) {
+	u32 prev_power = i + 1;
+	f64 higher_prev_value = PolyGet(poly, i+1);
+	f64 this_value = higher_prev_value*prev_power;
+	PolySet(der, i, this_value);
     }
 
     return der;
 }
 
 void VCALC_PolyPrint(Matrix* poly) {
-    for (u32 i = 0; i < poly->size[0] - 1; i++) {
-	if (poly->values[i] == 0) continue;
-	f64 absval = fabs(poly->values[i]);
-	b8 minus = poly->values[i] < 0;
-	if (i != 0) {
+    for (u32 i = poly->size[0] - 1; i >= 1; i--) {
+	f64 value = PolyGet(poly, i);
+	if (value == 0) continue;
+	f64 absval = fabs(value);
+	b8 minus = value < 0;
+	if (i != poly->size[0] - 1) {
 	    printf(" %c ", minus ? '-' : '+');
 	}
 
-	if (i == poly->size[0] - 2) {
-	    printf("%.2lf*x", fabs(poly->values[i]));
+	if (i == 1) {
+	    printf("%.2lf*x", absval);
 	} else {
-	    printf("%.2lf*x^%d", fabs(poly->values[i]), poly->size[0] - 1 - i);
+	    printf("%.2lf*x^%d", absval, i);
 	}
     }
 
     if (poly->size[0] - 1 == 0) {
-	printf("%.2lf", poly->values[0]);
-    } else if (poly->size[0] - 1 > 0 && poly->values[poly->size[0] - 1] != 0) {
-	f64 absval = fabs(poly->values[poly->size[0] - 1]);
-	b8 minus = poly->values[poly->size[0] - 1] < 0;
+	printf("%.2lf", PolyGet(poly, 0));
+    } else if (poly->size[0] - 1 > 0 && PolyGet(poly, 1) != 0) {
+	f64 value = PolyGet(poly, 1);
+	f64 absval = fabs(value);
+	b8 minus = value < 0;
 	printf(" %c ", minus ? '-' : '+');
-	printf("%.2lf", fabs(poly->values[poly->size[0] - 1]));
+	printf("%.2lf", absval);
     }
     printf("\n");
 }
@@ -286,9 +300,9 @@ b8 VCALC_PolyEq(Matrix* first, Matrix* second) {
 	iVCALC_LogMessage("Not the same degrees: %u and %u\n", first->size[0] - 1, second->size[0] - 1);
 	return 1;
     }
-    for (u32 i = 0; i <= first->size[0] - 1; i++) {
-	if (!iVCALC_DoubleEq(first->values[i], second->values[i])) {
-	    iVCALC_LogMessage("Not the same at power %u.\n%.30lf\n%.30lf\n", first->size[0] - 1 - i, first->values[i], second->values[i]);
+    for (u32 i = 0; i < first->size[0]; i++) {
+	if (!iVCALC_DoubleEq(PolyGet(first, i), PolyGet(second, i))) {
+	    iVCALC_LogMessage("Not the same at power %u.\n%.30lf\n%.30lf\n", i, PolyGet(first, i), PolyGet(second, i));
 	    return 1;
 	}
     }
@@ -297,11 +311,9 @@ b8 VCALC_PolyEq(Matrix* first, Matrix* second) {
 
 f64 VCALC_PolyEvaluate(Matrix* poly, f64 x) {
     f64 sum = 0;
-    for (u32 i = 0; i < poly->size[0] - 1; i++) {
-	u32 power = poly->size[0] - 1 - i;
-	sum += poly->values[i]*pow(x, power);
+    for (u32 i = 0; i < poly->size[0]; i++) {
+	sum += PolyGet(poly, i)*pow(x, i);
     }
-    sum += poly->values[poly->size[0] - 1];
     return sum;
 }
 
@@ -309,8 +321,9 @@ Matrix* VCALC_PolyAntiderivative(Matrix* poly) {
     Matrix* antider = iVCALC_PolyNew(poly->size[0]);
 
     for (u32 i = 0; i < poly->size[0]; i++) {
-	u32 power = antider->size[0] - 1 - i;
-	antider->values[i] = poly->values[i]/power;
+	u32 power = i + 1;
+	f64 prev_value = PolyGet(poly, i);
+	PolySet(antider, i + 1, prev_value/power);
     }
 
     return antider;
@@ -393,7 +406,7 @@ Matrix* VCALC_PolyParse(char* str) {
 	    if (!has_value) continue;
 	    cursor--;
 	}
-	poly->values[degree - power] += value;
+	PolySet(poly, power, PolyGet(poly, power) + value);
 	if (str[cursor] == 0) break;
     }
     return poly;
